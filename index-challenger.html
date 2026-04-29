@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>チャレンジャーMT 議事録</title>
+<style>
+  :root {
+    --bg: #f5f5f3; --card: #ffffff; --ink: #1a1a1a; --ink-sub: #555;
+    --ink-mute: #888; --line: #e5e5e0; --accent: #2563eb; --accent-soft: #dbeafe;
+    --green: #16a34a; --green-soft: #dcfce7; --green-border: #86efac;
+    --amber: #d97706; --amber-soft: #fef3c7;
+    --red: #dc2626; --red-soft: #fee2e2;
+    --purple: #7c3aed; --purple-soft: #ede9fe;
+    --chip: #f1f1ee; --teal: #0d9488; --teal-soft: #ccfbf1;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", sans-serif; background: var(--bg); color: var(--ink); line-height: 1.7; font-size: 14px; }
+
+  /* ── Viewer Bar ── */
+  .viewer-bar { position: sticky; top: 0; z-index: 100; background: #fff; border-bottom: 1px solid var(--line); padding: 10px 24px; display: flex; align-items: center; gap: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.04); }
+  .viewer-type { font-size: 14px; font-weight: 700; color: var(--ink); white-space: nowrap; }
+  .viewer-type .type-badge { font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 20px; background: #dcfce7; color: #16a34a; margin-right: 8px; }
+  .viewer-select { font-size: 13px; padding: 6px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--chip); color: var(--ink); min-width: 320px; cursor: pointer; }
+  .viewer-count { font-size: 12px; color: var(--ink-mute); margin-left: auto; white-space: nowrap; }
+
+  /* ── Container ── */
+  .container { max-width: 920px; margin: 0 auto; padding: 28px 24px 80px; }
+
+  /* ── Header ── */
+  .header { margin-bottom: 28px; }
+  .header-tags { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+  .tag { font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 20px; }
+  .tag-blue { background: var(--accent-soft); color: var(--accent); }
+  .tag-green { background: var(--green-soft); color: var(--green); }
+  .tag-purple { background: var(--purple-soft); color: var(--purple); }
+  .tag-amber { background: var(--amber-soft); color: var(--amber); }
+  .tag-teal { background: var(--teal-soft); color: var(--teal); }
+  .header h1 { font-size: 20px; font-weight: 700; margin-bottom: 4px; line-height: 1.4; }
+  .header-sub { font-size: 13px; color: var(--ink-mute); margin-bottom: 14px; }
+  .meta-row { display: flex; flex-wrap: wrap; gap: 20px; font-size: 13px; color: var(--ink-sub); }
+  .meta-item { display: flex; align-items: center; gap: 5px; }
+
+  /* ── Section ── */
+  .section { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 24px; margin-bottom: 16px; }
+  .section-title { font-size: 15px; font-weight: 700; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+
+  /* ── Decisions ── */
+  .decisions { border-left: 4px solid var(--green); }
+  .decision-item { display: flex; gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--line); }
+  .decision-item:last-child { border-bottom: none; padding-bottom: 0; }
+  .decision-item:first-child { padding-top: 0; }
+  .decision-num { flex-shrink: 0; width: 26px; height: 26px; background: var(--green); color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; margin-top: 1px; }
+  .decision-text { font-size: 14px; }
+  .decision-text strong { color: var(--green); }
+
+  /* ── Discussion ── */
+  .discussion-topic { margin-bottom: 24px; }
+  .discussion-topic:last-child { margin-bottom: 0; }
+  .topic-header { font-size: 14px; font-weight: 700; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 2px solid var(--line); display: flex; align-items: center; gap: 8px; }
+  .topic-label { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 4px; background: var(--chip); color: var(--ink-sub); }
+
+  /* Speaker bubbles */
+  .utterance { display: flex; gap: 10px; margin-bottom: 10px; align-items: flex-start; }
+  .avatar { flex-shrink: 0; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: #fff; margin-top: 2px; }
+  .bubble { background: #f8f8f6; border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; font-size: 13px; line-height: 1.65; flex: 1; }
+  .bubble .speaker-name { font-size: 11px; font-weight: 700; color: var(--ink-mute); margin-bottom: 3px; }
+
+  /* Conclusion / Quote / Diagram */
+  .conclusion-box { background: var(--green-soft); border: 1px solid var(--green-border); border-radius: 8px; padding: 12px 16px; margin-top: 10px; font-size: 13px; }
+  .conclusion-box .cb-label { font-size: 11px; font-weight: 700; color: var(--green); margin-bottom: 4px; }
+  .quote-box { background: var(--amber-soft); border-left: 4px solid var(--amber); border-radius: 0 8px 8px 0; padding: 14px 18px; margin: 12px 0; }
+  .quote-text { font-size: 14px; font-weight: 600; line-height: 1.6; }
+  .quote-attr { font-size: 12px; color: var(--ink-mute); margin-top: 6px; }
+  .comparison-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 14px 0; }
+  .comp-card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 16px; text-align: center; }
+  .comp-card .ci { font-size: 28px; margin-bottom: 6px; }
+  .comp-card .ct { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
+  .comp-card .cd { font-size: 12px; color: var(--ink-sub); line-height: 1.5; }
+  .flow-diagram { display: flex; align-items: center; gap: 0; margin: 14px 0; flex-wrap: wrap; justify-content: center; }
+  .flow-step { background: var(--accent-soft); border: 1px solid #93c5fd; border-radius: 8px; padding: 10px 16px; text-align: center; font-size: 12px; font-weight: 600; color: var(--accent); min-width: 90px; }
+  .flow-arrow { font-size: 18px; color: var(--ink-mute); padding: 0 4px; }
+  .metric-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin: 14px 0; }
+  .metric-card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px; text-align: center; }
+  .metric-card .mv { font-size: 26px; font-weight: 800; }
+  .metric-card .ml { font-size: 11px; color: var(--ink-mute); margin-top: 2px; }
+  .person-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 14px 0; }
+  .person-card { background: #f8f8f6; border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+  .person-card .pn { font-size: 13px; font-weight: 700; margin-bottom: 6px; }
+  .person-card .pnote { font-size: 12px; color: var(--ink-sub); line-height: 1.5; }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; vertical-align: middle; }
+  .benchmark-list { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0; }
+  .benchmark-chip { font-size: 12px; padding: 4px 12px; background: var(--chip); border: 1px solid var(--line); border-radius: 20px; }
+  .info-label { font-size: 12px; font-weight: 700; color: var(--ink-mute); margin-bottom: 6px; }
+
+  /* Table */
+  .data-table { width: 100%; border-collapse: collapse; font-size: 13px; margin: 10px 0; }
+  .data-table th { background: var(--chip); text-align: left; padding: 8px 10px; font-weight: 600; font-size: 12px; color: var(--ink-sub); border-bottom: 2px solid var(--line); }
+  .data-table td { padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .badge { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 4px; }
+  .badge-green { background: var(--green-soft); color: var(--green); }
+  .badge-amber { background: var(--amber-soft); color: var(--amber); }
+  .badge-blue { background: var(--accent-soft); color: var(--accent); }
+
+  /* ── Actions ── */
+  .action-group { margin-bottom: 16px; }
+  .action-group:last-child { margin-bottom: 0; }
+  .action-group-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .action-group-avatar { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: #fff; }
+  .ag-overlap { margin-left: -8px; }
+  .action-group-name { font-size: 13px; font-weight: 700; }
+  .action-list { list-style: none; }
+  .action-item { display: flex; align-items: flex-start; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
+  .action-item:last-child { border-bottom: none; }
+  .action-check { flex-shrink: 0; width: 18px; height: 18px; border: 2px solid var(--line); border-radius: 4px; margin-top: 2px; }
+  .action-text { flex: 1; }
+  .action-deadline { flex-shrink: 0; font-size: 12px; color: var(--ink-mute); background: var(--chip); padding: 2px 8px; border-radius: 4px; margin-top: 1px; }
+
+  /* ── Next meeting ── */
+  .next-meeting { background: var(--accent-soft); border: 1px solid #93c5fd; border-radius: 12px; padding: 18px 24px; margin-top: 16px; display: flex; align-items: center; gap: 14px; }
+  .next-meeting .nm-icon { font-size: 28px; }
+  .next-meeting .nm-info { font-size: 14px; font-weight: 700; color: var(--accent); }
+  .next-meeting .nm-sub { font-weight: 400; font-size: 13px; color: var(--ink-sub); display: block; margin-top: 2px; }
+
+  /* ── Empty state ── */
+  .empty-state { text-align: center; padding: 80px 20px; color: var(--ink-mute); }
+  .empty-state .es-icon { font-size: 48px; margin-bottom: 12px; }
+
+  /* Bubble list */
+  .bubble ul { padding-left: 16px; margin-top: 6px; }
+  .bubble li { margin-bottom: 3px; }
+</style>
+</head>
+<body>
+
+<div class="viewer-bar">
+  <div class="viewer-type"><span class="type-badge" style="background:#fed7aa;color:#c2410c">チャレンジャー</span>MT 議事録</div>
+  <select class="viewer-select" id="dateSelect"></select>
+  <div class="viewer-count" id="countLabel"></div>
+</div>
+
+<div class="container" id="content"></div>
+
+<script>
+// ═══ Speaker Config (毎回 meeting.members で上書き) ═══
+const SP = {};
+
+// ═══ Render Engine ═══
+function R(m) {
+  Object.keys(SP).forEach(k => delete SP[k]);
+  Object.assign(SP, m.members || {});
+  return `
+    <div class="header">
+      <div class="header-tags">${m.tags.map(t => `<span class="tag tag-${t[1]}">${t[0]}</span>`).join('')}</div>
+      <h1>${m.title}</h1>
+      <div class="header-sub">${m.subtitle}</div>
+      <div class="meta-row">
+        <span class="meta-item">📅 ${m.date}</span>
+        <span class="meta-item">👥 ${m.participants}</span>
+        <span class="meta-item">🕐 ${m.duration}</span>
+        <span class="meta-item">💻 ${m.format || 'Google Meet'}</span>
+      </div>
+    </div>
+    ${rDec(m.decisions)}
+    ${rTopics(m.topics)}
+    ${rActions(m.actions)}
+    ${rNext(m.nextMeeting)}
+  `;
+}
+
+function rDec(ds) {
+  return `<div class="section decisions"><div class="section-title">✅ 決定事項</div>
+    ${ds.map((d,i) => `<div class="decision-item"><div class="decision-num">${i+1}</div><div class="decision-text"><strong>${d[0]}</strong>：${d[1]}</div></div>`).join('')}
+  </div>`;
+}
+
+function rTopics(topics) {
+  return `<div class="section"><div class="section-title">💬 議論ハイライト</div>
+    ${topics.map((t,i) => `<div class="discussion-topic">
+      <div class="topic-header"><span class="topic-label">TOPIC ${i+1}</span>${t.title}</div>
+      ${t.blocks.map(rBlock).join('')}
+    </div>`).join('')}
+  </div>`;
+}
+
+function rBlock(b) {
+  const type = b[0];
+  if (type === 'u') {
+    const sp = SP[b[1]] || { s: b[1][0], c: '#666' };
+    return `<div class="utterance"><div class="avatar" style="background:${sp.c}">${sp.s}</div>
+      <div class="bubble" style="border-left:3px solid ${sp.c}"><div class="speaker-name">${b[1]}</div>${b[2]}</div></div>`;
+  }
+  if (type === 'conclusion') return `<div class="conclusion-box"><div class="cb-label">結論</div>${b[1]}</div>`;
+  if (type === 'quote') return `<div class="quote-box"><div class="quote-text">「${b[1]}」</div><div class="quote-attr">― ${b[2]}</div></div>`;
+  if (type === 'comparison') return `<div class="comparison-grid">${b[1].map(c => `<div class="comp-card"><div class="ci">${c[0]}</div><div class="ct">${c[1]}</div><div class="cd">${c[2]}</div></div>`).join('')}</div>`;
+  if (type === 'flow') return `<div class="flow-diagram">${b[1].map((s,i) => (i > 0 ? '<div class="flow-arrow">→</div>' : '') + `<div class="flow-step">${s}</div>`).join('')}</div>`;
+  if (type === 'metrics') return `<div class="metric-row">${b[1].map(m => `<div class="metric-card"><div class="mv" style="color:${m[2] || 'var(--accent)'}">${m[0]}</div><div class="ml">${m[1]}</div></div>`).join('')}</div>`;
+  if (type === 'persons') return `<div class="person-grid">${b[1].map(p => `<div class="person-card"><div class="pn"><span class="dot" style="background:${p[2]}"></span>${p[0]}</div><div class="pnote">${p[1]}</div></div>`).join('')}</div>`;
+  if (type === 'benchmarks') return `<div><div class="info-label">${b[2] || 'ベンチマーク'}</div><div class="benchmark-list">${b[1].map(x => `<span class="benchmark-chip">${x}</span>`).join('')}</div></div>`;
+  if (type === 'table') return `<table class="data-table"><thead><tr>${b[1].map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>${b[2].map(r => `<tr>${r.map(c => `<td>${c}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+  return '';
+}
+
+function rActions(actions) {
+  const groups = {};
+  actions.forEach(a => {
+    const key = a.assignees.map(x => x[0]).join('・');
+    if (!groups[key]) groups[key] = { assignees: a.assignees, items: [] };
+    groups[key].items.push(a);
+  });
+  return `<div class="section"><div class="section-title">📋 ネクストアクション</div>
+    ${Object.values(groups).map(g => `<div class="action-group">
+      <div class="action-group-header">
+        ${g.assignees.map((a,i) => { const sp = SP[a[0]] || {s:a[0][0],c:'#666'}; return `<div class="action-group-avatar${i>0?' ag-overlap':''}" style="background:${sp.c}">${sp.s}</div>`; }).join('')}
+        <div class="action-group-name">${g.assignees.map(a => a[0]).join('・')}</div>
+      </div>
+      <ul class="action-list">${g.items.map(a => `<li class="action-item"><div class="action-check"></div><div class="action-text">${a.text}</div>${a.deadline ? `<div class="action-deadline">${a.deadline}</div>` : ''}</li>`).join('')}</ul>
+    </div>`).join('')}
+  </div>`;
+}
+
+function rNext(n) {
+  if (!n) return '';
+  return `<div class="next-meeting"><div class="nm-icon">📅</div><div class="nm-info">${n.text}<span class="nm-sub">${n.sub || ''}</span></div></div>`;
+}
+
+// ═══ Meeting Data ═══
+const MEETINGS = [
+/* __INSERT_NEW_MEETING_HERE__ */
+];
+
+// ═══ Init ═══
+const sel = document.getElementById('dateSelect');
+const content = document.getElementById('content');
+const countLabel = document.getElementById('countLabel');
+
+if (MEETINGS.length === 0) {
+  content.innerHTML = '<div class="empty-state"><div class="es-icon">📋</div><p>議事録はまだありません</p></div>';
+} else {
+  MEETINGS.forEach((m, i) => {
+    const opt = document.createElement('option');
+    opt.value = i;
+    opt.textContent = m.date + '  ' + m.title;
+    sel.appendChild(opt);
+  });
+  countLabel.textContent = `全${MEETINGS.length}件`;
+  function show(i) { content.innerHTML = R(MEETINGS[i]); }
+  sel.addEventListener('change', () => show(sel.value));
+  show(0);
+}
+</script>
+</body>
+</html>
