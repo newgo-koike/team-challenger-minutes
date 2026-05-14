@@ -128,6 +128,20 @@
   .transcript-toggle { margin-top: 12px; }
   .transcript-btn { font-size: 12px; font-weight: 600; color: var(--ink-mute); background: var(--chip); border: 1px solid var(--line); border-radius: 6px; padding: 5px 12px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
   .transcript-btn:hover { background: var(--line); }
+  /* ── Ref URLs ── */
+  .meta-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; align-items: flex-start; }
+  .ref-url-section { min-width: 0; }
+  .ref-url-list { list-style: none; margin: 0 0 4px; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+  .ref-url-item { display: flex; align-items: center; gap: 5px; font-size: 12px; }
+  .ref-url-link { color: #2563eb; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 300px; display: inline-block; }
+  .ref-url-link:hover { text-decoration: underline; }
+  .ref-url-del { color: var(--ink-mute); background: none; border: none; cursor: pointer; font-size: 10px; padding: 0 2px; flex-shrink: 0; line-height: 1; }
+  .ref-url-del:hover { color: #dc2626; }
+  .ref-url-add-row { display: flex; gap: 4px; align-items: center; }
+  .ref-url-label { font-size: 12px; color: var(--ink-mute); white-space: nowrap; flex-shrink: 0; }
+  .ref-url-input { font-size: 12px; border: 1px solid var(--line); border-radius: 5px; padding: 4px 8px; background: var(--bg); color: var(--ink); width: 220px; }
+  .ref-url-add-btn { font-size: 12px; font-weight: 600; color: var(--ink-mute); background: var(--chip); border: 1px solid var(--line); border-radius: 5px; padding: 4px 10px; cursor: pointer; white-space: nowrap; flex-shrink: 0; }
+  .ref-url-add-btn:hover { background: var(--line); }
   .transcript-body { display: none; margin-top: 10px; background: #fafaf9; border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; font-size: 12px; line-height: 1.85; color: var(--ink-sub); white-space: pre-wrap; max-height: 300px; overflow-y: auto; }
   .transcript-body.open { display: block; }
 
@@ -291,6 +305,41 @@ function escHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
+// ═══ Reference URLs ═══
+function loadRefs(date) {
+  try { return JSON.parse(localStorage.getItem(sk(date,'refs')) || '[]'); } catch { return []; }
+}
+function saveRefs(date, refs) { localStorage.setItem(sk(date,'refs'), JSON.stringify(refs)); }
+function renderRefs(date) {
+  const listEl = document.getElementById('refList_' + date.replace(/\//g,'-'));
+  if (!listEl) return;
+  const refs = loadRefs(date);
+  listEl.innerHTML = refs.map((r, i) =>
+    `<li class="ref-url-item">
+      <a class="ref-url-link" href="${r.url}" target="_blank" title="${r.url}">${r.label || r.url}</a>
+      <button class="ref-url-del" onclick="deleteRef('${date}',${i})" title="削除">✕</button>
+    </li>`
+  ).join('');
+}
+function addRef(date) {
+  const key = date.replace(/\//g,'-');
+  const input = document.getElementById('refInput_' + key);
+  const val = (input.value || '').trim();
+  if (!val) return;
+  const url = /^https?:\/\//.test(val) ? val : 'https://' + val;
+  const refs = loadRefs(date);
+  refs.push({ url, label: url });
+  saveRefs(date, refs);
+  input.value = '';
+  renderRefs(date);
+}
+function deleteRef(date, idx) {
+  const refs = loadRefs(date);
+  refs.splice(idx, 1);
+  saveRefs(date, refs);
+  renderRefs(date);
+}
+
 function toggleTranscript(btn) {
   const body = btn.nextElementSibling;
   const isOpen = body.classList.toggle('open');
@@ -299,13 +348,24 @@ function toggleTranscript(btn) {
 
 function R(m) {
   updateSP(m);
-  const transcriptHtml = m.transcript ? `
+  const _dk = m.date.replace(/\//g,'-');
+  const transcriptBlock = m.transcript ? `
     <div class="transcript-toggle">
       <button class="transcript-btn" onclick="toggleTranscript(this)">
         📝 文字起こしを見る <span class="tr-arrow">▼</span>
       </button>
       <div class="transcript-body">${escHtml(m.transcript)}</div>
     </div>` : '';
+  const refBlock = `
+    <div class="ref-url-section">
+      <ul class="ref-url-list" id="refList_${_dk}"></ul>
+      <div class="ref-url-add-row">
+        <span class="ref-url-label">🔗 参考URL</span>
+        <input class="ref-url-input" id="refInput_${_dk}" type="url" placeholder="https://..." onkeydown="if(event.key==='Enter')addRef('${m.date}')">
+        <button class="ref-url-add-btn" onclick="addRef('${m.date}')">＋ 追加</button>
+      </div>
+    </div>`;
+  const transcriptHtml = `<div class="meta-actions">${transcriptBlock}${refBlock}</div>`;
   return `
     <div class="header">
       <div class="header-tags">${m.tags.map(t => `<span class="tag tag-${t[1]}">${t[0]}</span>`).join('')}</div>
@@ -566,6 +626,7 @@ function show(i) {
   const m = MEETINGS[i];
   currentDate = m.date;
   document.getElementById('content').innerHTML = R(m);
+  renderRefs(currentDate);
   memoText.value = loadMemo(currentDate);
   // スキル自動生成の図解（diagramUrl）+ ユーザー追加画像を合わせて表示
   const userImgs = loadDiagrams(currentDate);
