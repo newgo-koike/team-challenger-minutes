@@ -15,6 +15,7 @@
     --chip: #f1f1ee; --teal: #0d9488; --teal-soft: #ccfbf1;
     --panel-w: 280px;
     --bar-h: 49px;
+    --mob-nav-h: 56px;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", sans-serif; background: var(--bg); color: var(--ink); line-height: 1.7; font-size: 14px; overflow-x: hidden; }
@@ -225,6 +226,67 @@
 
   .empty-state { text-align: center; padding: 80px 20px; color: var(--ink-mute); }
   .empty-state .es-icon { font-size: 48px; margin-bottom: 12px; }
+  /* ── Mobile Navigation ── */
+  .mob-nav { display: none; }
+
+  @media (max-width: 768px) {
+    .viewer-bar { gap: 8px; padding: 9px 12px; }
+    .viewer-select { min-width: 0; flex: 1; font-size: 12px; }
+    .viewer-count { display: none; }
+
+    .page-layout { grid-template-columns: 1fr; }
+
+    .side-panel {
+      display: none;
+      position: fixed;
+      top: var(--bar-h);
+      left: 0; right: 0;
+      bottom: var(--mob-nav-h);
+      height: auto;
+      overflow: hidden;
+      z-index: 100;
+    }
+    .side-panel.mob-active { display: flex; }
+
+    .main-content { padding: 16px 16px calc(var(--mob-nav-h) + 20px); }
+    .main-content.mob-hidden { display: none; }
+
+    .mob-nav {
+      display: flex;
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      height: var(--mob-nav-h);
+      background: #fff;
+      border-top: 1px solid var(--line);
+      z-index: 200;
+      box-shadow: 0 -1px 6px rgba(0,0,0,.07);
+    }
+    .mob-tab {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      border: none; background: none;
+      color: var(--ink-mute);
+      cursor: pointer;
+      padding: 6px 0;
+      font-size: 20px;
+      transition: color .15s;
+    }
+    .mob-tab > span { font-size: 10px; font-weight: 600; letter-spacing: .02em; }
+    .mob-tab.active { color: var(--accent); }
+
+    .section { padding: 16px; }
+    .header h1 { font-size: 17px; }
+    .comparison-grid { grid-template-columns: 1fr; }
+    .person-grid { grid-template-columns: 1fr; }
+    .meta-row { gap: 10px; }
+    .meta-actions { flex-direction: column; }
+    .ref-url-input { width: 160px; }
+  }
+
 </style>
 </head>
 <body>
@@ -493,15 +555,15 @@ function handleFiles(files) {
   });
 }
 
-// baseSrc: スキル自動生成のURL（null可）、userImgs: ユーザー追加のbase64配列
-let _baseImgSrc = null;
-function renderDiagramsWithBase(baseSrc, userImgs) {
-  _baseImgSrc = baseSrc;
-  const baseHtml = baseSrc ? `
-    <div class="diagram-item" onclick="openLightboxSrc('${baseSrc}')" title="スキル生成の図解">
-      <img src="${baseSrc}" alt="図解">
+// baseSrcs: スキル自動生成のURL配列（[]可）、userImgs: ユーザー追加のbase64配列
+let _baseImgSrcs = [];
+function renderDiagramsWithBase(baseSrcs, userImgs) {
+  _baseImgSrcs = baseSrcs;
+  const baseHtml = baseSrcs.map((src, i) => `
+    <div class="diagram-item" onclick="openLightboxSrc('${src}')" title="スキル生成の図解">
+      <img src="${src}" alt="図解 ${i+1}">
       <span style="position:absolute;bottom:4px;left:6px;font-size:10px;background:rgba(0,0,0,.4);color:#fff;padding:2px 6px;border-radius:4px;">自動生成</span>
-    </div>` : '';
+    </div>`).join('');
   const userHtml = userImgs.map((src, i) => `
     <div class="diagram-item" onclick="openLightboxIdx(${i})">
       <img src="${src}" alt="追加図解 ${i+1}">
@@ -511,14 +573,14 @@ function renderDiagramsWithBase(baseSrc, userImgs) {
 }
 
 function renderDiagrams(imgs) {
-  renderDiagramsWithBase(_baseImgSrc, imgs);
+  renderDiagramsWithBase(_baseImgSrcs, imgs);
 }
 
 function deleteDiagram(idx) {
   const imgs = loadDiagrams(currentDate);
   imgs.splice(idx, 1);
   saveDiagrams(currentDate, imgs);
-  renderDiagramsWithBase(_baseImgSrc, imgs);
+  renderDiagramsWithBase(_baseImgSrcs, imgs);
 }
 
 function openLightboxSrc(src) {
@@ -627,10 +689,12 @@ function show(i) {
   currentDate = m.date;
   document.getElementById('content').innerHTML = R(m);
   renderRefs(currentDate);
+  if (isMobile()) switchPanel('main');
   memoText.value = loadMemo(currentDate);
   // スキル自動生成の図解（diagramUrl）+ ユーザー追加画像を合わせて表示
   const userImgs = loadDiagrams(currentDate);
-  renderDiagramsWithBase(m.diagramUrl || null, userImgs);
+  const baseSrcs = m.diagramUrls ? m.diagramUrls : (m.diagramUrl ? [m.diagramUrl] : []);
+  renderDiagramsWithBase(baseSrcs, userImgs);
   setTimeout(() => {
     resizeCanvas();
     const sketchData = loadSketch(currentDate);
@@ -886,7 +950,33 @@ if (MEETINGS.length === 0) {
   show(0);
 }
 
-window.addEventListener('resize', resizeCanvas);
+// ═══ Mobile Panel Switch ═══
+function isMobile() { return window.innerWidth <= 768; }
+function switchPanel(panel) {
+  ['diagram','main','memo'].forEach(p => {
+    const el = document.getElementById('mobTab-' + p);
+    if (el) el.classList.toggle('active', p === panel);
+  });
+  if (!isMobile()) return;
+  document.querySelector('.left-panel').classList.toggle('mob-active', panel === 'diagram');
+  document.querySelector('.right-panel').classList.toggle('mob-active', panel === 'memo');
+  document.getElementById('content').classList.toggle('mob-hidden', panel !== 'main');
+}
+
+window.addEventListener('resize', () => {
+  if (window.innerWidth > 768) {
+    document.querySelector('.left-panel').classList.remove('mob-active');
+    document.querySelector('.right-panel').classList.remove('mob-active');
+    document.getElementById('content').classList.remove('mob-hidden');
+  }
+  resizeCanvas();
+});
 </script>
+<nav class="mob-nav" id="mobNav">
+  <button class="mob-tab" id="mobTab-diagram" onclick="switchPanel('diagram')">📌<span>図解</span></button>
+  <button class="mob-tab active" id="mobTab-main" onclick="switchPanel('main')">📋<span>議事録</span></button>
+  <button class="mob-tab" id="mobTab-memo" onclick="switchPanel('memo')">✏️<span>メモ</span></button>
+</nav>
+
 </body>
 </html>
